@@ -1,0 +1,184 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de Custo de Vida</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen">
+  <div class="max-w-3xl mx-auto p-6 bg-white shadow-lg rounded-xl mt-10">
+    <h1 class="text-2xl font-bold mb-6 text-center">Simulador de Custo de Vida em Portugal</h1>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label for="cidade" class="block font-semibold">Cidade:</label>
+        <select id="cidade" class="w-full p-2 border rounded"></select>
+      </div>
+      <div>
+        <label for="perfil" class="block font-semibold">Estilo de Vida:</label>
+        <select id="perfil" class="w-full p-2 border rounded"></select>
+      </div>
+      <div>
+        <label for="tipologia" class="block font-semibold">Tipologia:</label>
+        <select id="tipologia" class="w-full p-2 border rounded">
+          <option value="T1">T1</option>
+          <option value="T2">T2</option>
+          <option value="T3">T3</option>
+        </select>
+      </div>
+      <div>
+        <label for="pessoas" class="block font-semibold">Número de Pessoas:</label>
+        <select id="pessoas" class="w-full p-2 border rounded">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3+">3+</option>
+        </select>
+      </div>
+    </div>
+
+    <button onclick="calcular()" class="mt-6 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full font-semibold">Calcular</button>
+
+    <div class="mt-8" id="resultado"></div>
+    <canvas id="grafico" class="mt-6"></canvas>
+  </div>
+
+<script>
+const dados = {
+  "Lisboa": {
+    "Econômico": {
+      "T1": { Alojamento: 1040, Contas: 176, Alimentacao: 560, Transporte: 144, Saude: 40, Lazer: 120, Pessoal: 80 },
+    },
+    "Moderado": {
+      "T2": { Alojamento: 1300, Contas: 220, Alimentacao: 700, Transporte: 180, Saude: 50, Lazer: 150, Pessoal: 100 },
+    },
+    "Confortável": {
+      "T3": { Alojamento: 1690, Contas: 286, Alimentacao: 910, Transporte: 234, Saude: 65, Lazer: 195, Pessoal: 130 },
+    }
+  },
+  "Porto": {
+    "Econômico": {
+      "T1": { Alojamento: 800, Contas: 160, Alimentacao: 480, Transporte: 120, Saude: 32, Lazer: 96, Pessoal: 64 },
+    },
+    "Moderado": {
+      "T2": { Alojamento: 1050, Contas: 200, Alimentacao: 620, Transporte: 160, Saude: 40, Lazer: 130, Pessoal: 90 },
+    },
+    "Confortável": {
+      "T3": { Alojamento: 1420, Contas: 250, Alimentacao: 830, Transporte: 200, Saude: 55, Lazer: 170, Pessoal: 120 },
+    }
+  },
+  "Coimbra": {
+    "Econômico": {
+      "T1": { Alojamento: 400, Contas: 80, Alimentacao: 250, Transporte: 35, Saude: 20, Lazer: 70, Pessoal: 50 },
+    },
+    "Moderado": {
+      "T2": { Alojamento: 600, Contas: 120, Alimentacao: 350, Transporte: 45, Saude: 35, Lazer: 100, Pessoal: 70 },
+    },
+    "Confortável": {
+      "T3": { Alojamento: 900, Contas: 180, Alimentacao: 480, Transporte: 60, Saude: 50, Lazer: 150, Pessoal: 100 },
+    }
+  },
+  "Braga": {
+    "Econômico": {
+      "T1": { Alojamento: 500, Contas: 90, Alimentacao: 300, Transporte: 40, Saude: 25, Lazer: 80, Pessoal: 60 },
+    },
+    "Moderado": {
+      "T2": { Alojamento: 750, Contas: 130, Alimentacao: 400, Transporte: 60, Saude: 35, Lazer: 110, Pessoal: 75 },
+    },
+    "Confortável": {
+      "T3": { Alojamento: 1100, Contas: 200, Alimentacao: 520, Transporte: 85, Saude: 50, Lazer: 160, Pessoal: 110 },
+    }
+  },
+  "Faro": {
+    "Econômico": {
+      "T1": { Alojamento: 600, Contas: 100, Alimentacao: 320, Transporte: 45, Saude: 30, Lazer: 85, Pessoal: 65 },
+    },
+    "Moderado": {
+      "T2": { Alojamento: 850, Contas: 140, Alimentacao: 420, Transporte: 70, Saude: 40, Lazer: 120, Pessoal: 85 },
+    },
+    "Confortável": {
+      "T3": { Alojamento: 1250, Contas: 210, Alimentacao: 560, Transporte: 95, Saude: 60, Lazer: 180, Pessoal: 130 },
+    }
+  }
+};
+
+const fatorPessoas = {"1": 1, "2": 1.7, "3+": 2.2};
+
+function preencherCampos() {
+  const cidades = Object.keys(dados);
+  const cidadeSelect = document.getElementById("cidade");
+  cidades.forEach(c => cidadeSelect.innerHTML += `<option>${c}</option>`);
+  atualizarPerfis();
+  cidadeSelect.addEventListener('change', atualizarPerfis);
+}
+
+function atualizarPerfis() {
+  const cidade = document.getElementById("cidade").value;
+  const perfilSelect = document.getElementById("perfil");
+  perfilSelect.innerHTML = "";
+  if (dados[cidade]) {
+    Object.keys(dados[cidade]).forEach(p => perfilSelect.innerHTML += `<option>${p}</option>`);
+  }
+}
+
+function calcular() {
+  const cidade = document.getElementById("cidade").value;
+  const perfil = document.getElementById("perfil").value;
+  const tipologia = document.getElementById("tipologia").value;
+  const pessoas = document.getElementById("pessoas").value;
+
+  const base = dados?.[cidade]?.[perfil]?.[tipologia];
+  if (!base) {
+    document.getElementById("resultado").innerHTML = "<p class='text-red-500'>Combinação de dados indisponível.</p>";
+    return;
+  }
+
+  const fP = fatorPessoas[pessoas];
+  const ajustado = {
+    Alojamento: base.Alojamento,
+    Contas: base.Contas,
+    Alimentacao: base.Alimentacao * fP,
+    Transporte: base.Transporte,
+    Saude: base.Saude * fP,
+    Lazer: base.Lazer * fP,
+    Pessoal: base.Pessoal * fP
+  };
+
+  let total = 0;
+  for (let key in ajustado) total += ajustado[key];
+
+  const resHTML = `
+    <div class="bg-gray-50 p-4 rounded shadow">
+      <h2 class="text-xl font-bold mb-4">Total Estimado: € ${total.toFixed(2)}</h2>
+      <ul class="space-y-2">
+        ${Object.entries(ajustado).map(([k, v]) => `<li><strong>${k}:</strong> € ${v.toFixed(2)}</li>`).join('')}
+      </ul>
+    </div>`;
+
+  document.getElementById("resultado").innerHTML = resHTML;
+
+  const ctx = document.getElementById('grafico').getContext('2d');
+  if (window.grafico) window.grafico.destroy();
+  window.grafico = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: Object.keys(ajustado),
+      datasets: [{
+        label: 'Distribuição de Gastos',
+        data: Object.values(ajustado),
+        backgroundColor: ['#3b82f6','#10b981','#f59e0b','#ef4444','#6366f1','#8b5cf6','#ec4899']
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
+}
+
+preencherCampos();
+</script>
+</body>
+</html>
